@@ -89,6 +89,6 @@ high_thread_func (void *lock_)
 
   lock_acquire (lock);
   msg ("High thread got the lock.");
-  lock_release (lock);
+  lock_release (lock); // Fails here
   msg ("High thread finished.");
 }

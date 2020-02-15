@@ -68,7 +68,7 @@ a_thread_func (void *lock_)
 
   lock_acquire (lock);
   msg ("Thread a acquired lock a.");
-  lock_release (lock);
+  lock_release (lock); // Fails here
   msg ("Thread a finished.");
 }
 

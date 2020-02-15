@@ -72,6 +72,6 @@ b_thread_func (void *lock_)
 
   lock_acquire (lock);
   msg ("Thread b acquired lock b.");
-  lock_release (lock);
+  lock_release (lock);  // Fails Here
   msg ("Thread b finished.");
 }

@@ -33,7 +33,7 @@ test_priority_donate_lower (void)
   thread_set_priority (PRI_DEFAULT - 10);
   msg ("Main thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT + 10, thread_get_priority ());
-  lock_release (&lock);
+  lock_release (&lock);  // Fails Here
   msg ("acquire must already have finished.");
   msg ("Main thread should have priority %d.  Actual priority: %d.",
        PRI_DEFAULT - 10, thread_get_priority ());
