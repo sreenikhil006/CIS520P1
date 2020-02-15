@@ -208,8 +208,8 @@ timer_interrupt (struct intr_frame *args UNUSED)
 	  {
 		  if(lock_try_acquire(&sleeping_list_lock))	
 		  {
-			list_remove(first);
 			sema_up(&(first_thread->sema));
+      list_remove(first);
 			lock_release(&sleeping_list_lock);
 		  }else
 		  {

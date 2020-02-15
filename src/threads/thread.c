@@ -70,6 +70,7 @@ static void *alloc_frame (struct thread *, size_t size);
 static void schedule (void);
 void thread_schedule_tail (struct thread *prev);
 static tid_t allocate_tid (void);
+void thread_compare_priority(struct thread *);
 
 /* Initializes the threading system by transforming the code
    that's currently running into a thread.  This can't work in
@@ -200,6 +201,8 @@ thread_create (const char *name, int priority,
 
   /* Add to run queue. */
   thread_unblock (t);
+
+  thread_compare_priority(t);
 
   return tid;
 }
@@ -336,6 +339,20 @@ void
 thread_set_priority (int new_priority) 
 {
   thread_current ()->priority = new_priority;
+
+  struct thread *next;
+  enum intr_level previous_level = intr_disable();
+
+  if(!list_empty(&ready_list))
+  {
+    next = list_entry(list_pop_front(&ready_list), struct thread, elem);
+    intr_set_level (previous_level);
+    thread_compare_priority(next);
+  }
+  else
+  {
+    intr_set_level(previous_level);
+  }
 }
 
 /* Returns the current thread's priority. */
@@ -343,6 +360,22 @@ int
 thread_get_priority (void) 
 {
   return thread_current ()->priority;
+}
+
+int
+thread_get_max_priority(struct thread *t)
+{
+  int max_priority = t->priority;
+  if(!list_empty(&t->donated_priorities))
+  {
+    int priority = list_entry(list_pop_front(&t->donated_priorities), struct thread, don_elt)->priority;
+    if(priority > max_priority)
+    {
+      max_priority = priority;
+    }
+
+    return max_priority;
+  }
 }
 
 /* Sets the current thread's nice value to NICE. */
@@ -463,9 +496,11 @@ init_thread (struct thread *t, const char *name, int priority)
   t->stack = (uint8_t *) t + PGSIZE;
   t->priority = priority;
   t->magic = THREAD_MAGIC;
+  list_init(&t->donated_priorities);
 
   old_level = intr_disable ();
-  list_push_back (&all_list, &t->allelem);
+  // list_push_back (&all_list, &t->allelem);
+  list_insert_ordered(&all_list, &t->allelem, list_less_priority, NULL);
   intr_set_level (old_level);
 }
 
@@ -582,3 +617,12 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+void thread_compare_priority(struct thread *t)
+{
+  int max_priority = thread_get_max_priority(t);
+  if(thread_get_priority() < max_priority)
+  {
+    thread_yield();
+  }
+}

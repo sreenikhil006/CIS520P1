@@ -6,6 +6,8 @@ Functionality of priority scheduler:
 3	priority-sema
 3	priority-condvar
 
+
+// Everything below this fails
 3	priority-donate-one
 3	priority-donate-multiple
 3	priority-donate-multiple2

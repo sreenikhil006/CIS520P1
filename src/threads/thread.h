@@ -107,7 +107,8 @@ struct thread
     struct semaphore sema;
     int64_t completion_time;
     struct list_elem sleeping_list_elt;
-
+    struct list donated_priorities;
+    struct list_elem don_elt;
   };
 
 /* If false (default), use round-robin scheduler.
@@ -140,6 +141,7 @@ void thread_foreach (thread_action_func *, void *);
 
 int thread_get_priority (void);
 void thread_set_priority (int);
+void thread_compare_priority(struct thread *t);
 
 int thread_get_nice (void);
 void thread_set_nice (int);

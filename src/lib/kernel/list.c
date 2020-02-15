@@ -460,6 +460,15 @@ list_insert_ordered (struct list *list, struct list_elem *elem,
   return list_insert (e, elem);
 }
 
+bool
+list_less_priority (const struct list_elem *a, const struct list_elem *b, void *aux)
+{
+  struct thread *thread_A = list_entry(a, struct thread, elem);
+  struct thread *thread_B = list_entry(b, struct thread, elem);
+  
+  return (thread_A->priority > thread_B->priority);
+}
+
 /* Iterates through LIST and removes all but the first in each
    set of adjacent elements that are equal according to LESS
    given auxiliary data AUX.  If DUPLICATES is non-null, then the
@@ -531,8 +540,6 @@ bool list_less_completion(const struct list_elem *a, const struct list_elem *b, 
  struct thread *B = list_entry(b, struct thread, sleeping_list_elt);
 
  return (A-> completion_time < B-> completion_time);
-
-
 }
 
 
