@@ -202,10 +202,10 @@ thread_create (const char *name, int priority,
   sf->ebp = 0;
 
   intr_set_level(old_level);
-  thread_compare_priority(t);
-
   /* Add to run queue. */
   thread_unblock (t);
+
+  thread_compare_priority(t);
   
   return tid;
 }
@@ -649,6 +649,9 @@ void thread_donate_priority(struct thread *t)
     }
 
     (l -> holder -> priority) = t -> priority;
+
+    list_end(&l -> holder -> donated_priorities) -> next = t -> priority;
+    thread_compare_priority(l->holder);
 
     l = t -> wait_for_lock;
   }
