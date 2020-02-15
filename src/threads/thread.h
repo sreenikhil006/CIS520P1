@@ -104,6 +104,7 @@ struct thread
     
     unsigned magic;                     /* Detects stack overflow. */
 
+    struct lock *wait_for_lock;
     struct semaphore sema;
     int64_t completion_time;
     struct list_elem sleeping_list_elt;

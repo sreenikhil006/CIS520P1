@@ -184,6 +184,8 @@ thread_create (const char *name, int priority,
   init_thread (t, name, priority);
   tid = t->tid = allocate_tid ();
 
+  enum intr_level old_level = intr_disable();
+
   /* Stack frame for kernel_thread(). */
   kf = alloc_frame (t, sizeof *kf);
   kf->eip = NULL;
@@ -199,11 +201,12 @@ thread_create (const char *name, int priority,
   sf->eip = switch_entry;
   sf->ebp = 0;
 
-  /* Add to run queue. */
-  thread_unblock (t);
-
+  intr_set_level(old_level);
   thread_compare_priority(t);
 
+  /* Add to run queue. */
+  thread_unblock (t);
+  
   return tid;
 }
 
@@ -315,6 +318,7 @@ thread_yield (void)
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
+  list_end(&cur->donated_priorities)->next = (cur->priority);
 }
 
 /* Invoke function 'func' on all threads, passing along 'aux'.
@@ -336,7 +340,7 @@ thread_foreach (thread_action_func *func, void *aux)
 
 /* Sets the current thread's priority to NEW_PRIORITY. */
 void
-thread_set_priority (int new_priority) 
+thread_set_priority (int new_priority)
 {
   thread_current ()->priority = new_priority;
 
@@ -345,7 +349,7 @@ thread_set_priority (int new_priority)
 
   if(!list_empty(&ready_list))
   {
-    next = list_entry(list_pop_front(&ready_list), struct thread, elem);
+    next = list_entry(list_front(&ready_list), struct thread, elem);
     intr_set_level (previous_level);
     thread_compare_priority(next);
   }
@@ -363,7 +367,7 @@ thread_get_priority (void)
 }
 
 int
-thread_get_max_priority(struct thread *t)
+thread_get_best_priority(struct thread *t)
 {
   int max_priority = t->priority;
   if(!list_empty(&t->donated_priorities))
@@ -494,9 +498,9 @@ init_thread (struct thread *t, const char *name, int priority)
   t->status = THREAD_BLOCKED;
   strlcpy (t->name, name, sizeof t->name);
   t->stack = (uint8_t *) t + PGSIZE;
-  t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_init(&t->donated_priorities);
+  t->priority = priority;
 
   old_level = intr_disable ();
   // list_push_back (&all_list, &t->allelem);
@@ -620,9 +624,32 @@ uint32_t thread_stack_ofs = offsetof (struct thread, stack);
 
 void thread_compare_priority(struct thread *t)
 {
-  int max_priority = thread_get_max_priority(t);
+  int max_priority = thread_get_best_priority(t);
   if(thread_get_priority() < max_priority)
   {
     thread_yield();
+    thread_donate_priority(t);
+  }
+}
+
+void thread_donate_priority(struct thread *t)
+{
+  struct lock *l;
+  l = t->wait_for_lock;
+
+  if(!l){
+    if(l -> holder == NULL)
+    {
+      return;
+    }
+
+    if((l -> holder -> priority) >= t -> priority)
+    {
+      return;
+    }
+
+    (l -> holder -> priority) = t -> priority;
+
+    l = t -> wait_for_lock;
   }
 }
