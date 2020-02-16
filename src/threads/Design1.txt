@@ -1,0 +1,198 @@
+
+CIS 520 - Programming Project #1
+
+                   
+---- GROUP ----
+
+Dominic Tassio <dmtassio@ksu.edu>
+Sreenikhil Keshamoni <sreenikhil006@ksu.edu>
+Blake Wewer <bewewer@ksu.edu>
+
+---- PRELIMINARIES ----
+
+>> If you have any preliminary comments on your submission, notes for
+>> the TA, or extra credit, please give them here.
+
+>> Please cite any offline or online sources you consulted while
+>> preparing your submission, other than the Pintos documentation,
+>> course text, lecture notes, and course staff.
+
+We took reference from https://github.com/ChristianJHughes
+
+
+                 ALARM CLOCK
+                 ===========
+
+---- DATA STRUCTURES ----
+
+>> A1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+timer.c
+
+    static struct list sleeping_list; This keeps tracks of sleeping threads.
+
+    static struct lock sleeping_list_lock; This method helps with avoiding any race conditions in the sleeping_list.
+
+    enum intr_level old_level = intr_disable(); This helps with disable interrupts during thread creation.
+
+thread.h
+
+    struct thread {
+        ...
+        struct semaphore sema; This struct helps a thread to sleep.
+
+        int64_t completion_time; This keeps track of sleep time for a thread.
+
+        struct list_elem sleeping_list_elt; This helps to add another thread to the struct list.
+    }
+
+   
+
+---- ALGORITHMS ----
+
+>> A2: Briefly describe what happens in a call to your timer_sleep(),
+>> including the effects of the timer interrupt handler.
+
+When the timer_sleep() is called the semphore is created and initiliazed in the thread struct after getting its completion_time
+which is then saved in the struct. A lock needs to be acquired in order to access the sleeping_list. The current thread is
+then inserted in order, and the thread sleeps when the semphore is put down aftert the lock is released. 
+
+We check to see if there an any elements in the list of sleeping threads in the timer interrupt handler.
+If any elements are found then we get the first element from the list. We access the thread struct to get its completion_time from the list_elem.
+The next step is to check for the completion time and if passed then we acquire the lock, if not the
+element is removed and the thread is now woken up. 
+
+>> A3: What steps are taken to minimize the amount of time spent in
+>> the timer interrupt handler?
+
+The first step taken was to insert threads in order which allows us to check the first thread only and if it is not wake up time, 
+we break instead of wait. We use lock_try_acquire instead of lock_acquire so we wont have any waiting time for acquiring the lock. 
+
+---- SYNCHRONIZATION ----
+
+>> A4: How are race conditions avoided when multiple threads call
+>> timer_sleep() simultaneously?
+
+We avoid race conditions by acquiring the lock prior to inserting the thread into sleeping_list.
+
+>> A5: How are race conditions avoided when a timer interrupt occurs
+>> during a call to timer_sleep()?
+
+It is avoided by acquring the lock before removing the element in the interrupt.
+
+---- RATIONALE ----
+
+>> A6: Why did you choose this design?  In what ways is it superior to
+>> other designs that you considered?
+
+This design was the easiest implementation because we only had to add few extra structs because the struct thread already existed
+which is easier to add then to create new ones. 
+
+
+             PRIORITY SCHEDULING
+             ===================
+
+---- DATA STRUCTURES ----
+
+>> B1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+thread.h
+
+     struct lock *wait_for_lock; Used in thread_donate_priority to determine if a thread is waiting for a lock. 
+
+     struct list donated_priorities; This holds the donations given to a thread. 
+
+     struct list_elem don_elt; This helps if a thread needs to be saved. 
+
+>> B2: Explain the data structure used to track priority donation.
+
+The data structure we used was a list to keep track of donated priorities of a thread, 
+and it was a sorted in order to get the maximum donated priority. 
+ 
+
+---- ALGORITHMS ----
+
+>> B3: How do you ensure that the highest priority thread waiting for
+>> a lock, semaphore, or condition variable wakes up first?
+
+    In the function sema_down, we insert it in correct order also we sort the waiting_list by priority in the case of any new donations. 
+
+>> B4: Describe the sequence of events when a call to lock_acquire()
+>> causes a priority donation.  How is nested donation handled?
+
+    We get the lock's holder thread and donate our priority by inserting the current priority in the donation list. 
+    We use a while loop for each dontations to go as far as it needs to. 
+
+>> B5: Describe the sequence of events when lock_release() is called
+>> on a lock that a higher-priority thread is waiting for.
+
+we remove the thread from the donations list that were waiting from the release lock holder which 
+will change the priority of the lock holder. After this the higher-priority thread in the ready_list would have the highest priority and now it can use the CPU.
+
+
+---- SYNCHRONIZATION ----
+
+>> B6: Describe a potential race in thread_set_priority() and explain
+>> how your implementation avoids it.  Can you use a lock to avoid
+>> this race?
+
+By having two threads waiting on the same thread and they donating at the same time would cause a race condition. 
+We solve this problem by turning of the interrupts when this fucntion is called. 
+
+---- RATIONALE ----
+
+>> B7: Why did you choose this design?  In what ways is it superior to
+>> another design you considered?
+
+Our design helps with keeping track of minimal things and not worry about children nodes which might cause problems with 
+race conditions and would make processing time higher and make the whole implementation more complex. We also inserted in order to help us
+avoid iterating over every element in order to find the max priority every time you call the fucntion. This helps with having lower over-head. 
+
+              ADVANCED SCHEDULER [EXTRA CREDIT]
+              =================================
+
+---- DATA STRUCTURES ----
+
+>> C1: Copy here the declaration of each new or changed `struct' or
+>> `struct' member, global or static variable, `typedef', or
+>> enumeration.  Identify the purpose of each in 25 words or less.
+
+---- ALGORITHMS ----
+
+>> C2: Suppose threads A, B, and C have nice values 0, 1, and 2.  Each
+>> has a recent_cpu value of 0.  Fill in the table below showing the
+>> scheduling decision and the priority and recent_cpu values for each
+>> thread after each given number of timer ticks:
+
+timer  recent_cpu    priority   thread
+ticks   A   B   C   A   B   C   to run
+-----  --  --  --  --  --  --   ------
+ 0
+ 4
+ 8
+12
+16
+20
+24
+28
+32
+36
+
+>> C3: Did any ambiguities in the scheduler specification make values
+>> in the table uncertain?  If so, what rule did you use to resolve
+>> them?  Does this match the behavior of your scheduler?
+
+>> C4: How is the way you divided the cost of scheduling between code
+>> inside and outside interrupt context likely to affect performance?
+
+---- RATIONALE ----
+
+>> C5: Briefly critique your design, pointing out advantages and
+>> disadvantages in your design choices.  If you were to have extra
+>> time to work on this part of the project, how might you choose to
+>> refine or improve your design?
+
